@@ -31,6 +31,7 @@ from .exceptions import (
     DefaultAlreadySetError,
     FrozenInstanceError,
     NotAnAttrsClassError,
+    NotInitializedError,
     UnannotatedAttributeError,
 )
 
@@ -572,7 +573,7 @@ def _frozen_setattrs(self, name, value):
         BaseException.__setattr__(self, name, value)
         return
 
-    raise FrozenInstanceError
+    raise FrozenInstanceError(name)
 
 
 def _frozen_delattrs(self, name):
@@ -583,7 +584,7 @@ def _frozen_delattrs(self, name):
         BaseException.__delattr__(self, name)
         return
 
-    raise FrozenInstanceError
+    raise FrozenInstanceError(name)
 
 
 def evolve(*args, **changes):
@@ -1753,6 +1754,11 @@ def _make_eq_script(attrs: list) -> tuple[str, dict]:
 
     globs = {}
     if attrs:
+        for a in attrs:
+            lines.append(f"    if not hasattr(self, {a.name!r}):")
+            lines.append(f"        raise NotInitializedError({a.name!r})")
+            lines.append(f"    if not hasattr(other, {a.name!r}):")
+            lines.append(f"        raise NotInitializedError({a.name!r})")
         lines.append("    return  (")
         for a in attrs:
             if a.eq_key:
@@ -1772,6 +1778,7 @@ def _make_eq_script(attrs: list) -> tuple[str, dict]:
         lines.append("    return True")
 
     script = "\n".join(lines)
+    globs["NotInitializedError"] = NotInitializedError
 
     return script, globs
 

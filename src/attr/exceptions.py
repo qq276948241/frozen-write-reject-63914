@@ -14,10 +14,17 @@ class FrozenError(AttributeError):
     .. versionadded:: 20.1.0
     """
 
-    def __init__(self):
-        msg = "can't set attribute"
-        super().__init__(msg)
+    def __init__(self, name=None):
+        if name is None:
+            msg = "can't set attribute"
+            args = (msg,)
+        else:
+            msg = f"can't set attribute {name!r}"
+            args = (msg, name)
+
+        super().__init__(*args)
         self.msg = msg
+        self.name = name
 
 
 class FrozenInstanceError(FrozenError):
@@ -93,3 +100,22 @@ class NotCallableError(TypeError):
 
     def __str__(self):
         return str(self.msg)
+
+
+class NotInitializedError(Exception):
+    """
+    An attrs instance is compared or hashed before all of its attributes have
+    been initialized (for example one created via ``object.__new__``).
+    """
+
+    def __init__(self, name=None):
+        if name is None:
+            msg = "instance is not initialized"
+            args = (msg,)
+        else:
+            msg = f"attribute {name!r} is not initialized"
+            args = (msg, name)
+
+        super().__init__(*args)
+        self.msg = msg
+        self.name = name

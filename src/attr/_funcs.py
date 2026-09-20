@@ -3,7 +3,7 @@
 
 from ._compat import get_generic_base
 from ._make import _OBJ_SETATTR, NOTHING, fields
-from .exceptions import AttrsAttributeNotFoundError
+from .exceptions import AttrsAttributeNotFoundError, NotAnAttrsClassError
 
 
 _ATOMIC_TYPES = frozenset(
@@ -493,3 +493,46 @@ def resolve_types(
 
     # Return the class so you can use it as a decorator too.
     return cls
+
+
+def diff(inst1, inst2):
+    """
+    Return a list of differences between two *attrs* instances.
+
+    Only fields that participate in equality comparison (``eq=True``) are
+    considered. Each difference is a ``(name, value_in_inst1, value_in_inst2)``
+    tuple, in field definition order. Fields excluded from comparison never
+    appear in the result.
+
+    Args:
+        inst1: Instance of an *attrs*-decorated class.
+        inst2: Instance of the *same* *attrs*-decorated class.
+
+    Returns:
+        list[tuple[str, typing.Any, typing.Any]]: A list of differences; empty
+        when the instances are equal by comparison fields.
+
+    Raises:
+        attrs.exceptions.NotAnAttrsClassError:
+            If either argument is not an *attrs* instance.
+
+        TypeError:
+            If the two instances belong to different classes.
+    """
+    if not has(inst1.__class__) or not has(inst2.__class__):
+        msg = "Both arguments to diff must be attrs instances."
+        raise NotAnAttrsClassError(msg)
+
+    if inst1.__class__ is not inst2.__class__:
+        msg = (
+            "Can't diff instances of different classes "
+            f"{inst1.__class__.__name__!r} and "
+            f"{inst2.__class__.__name__!r}."
+        )
+        raise TypeError(msg)
+
+    return [
+        (a.name, getattr(inst1, a.name), getattr(inst2, a.name))
+        for a in fields(inst1.__class__)
+        if a.eq and getattr(inst1, a.name) != getattr(inst2, a.name)
+    ]
