@@ -31,6 +31,7 @@ from .exceptions import (
     DefaultAlreadySetError,
     FrozenInstanceError,
     NotAnAttrsClassError,
+    NotInitializedError,
     UnannotatedAttributeError,
 )
 
@@ -572,7 +573,7 @@ def _frozen_setattrs(self, name, value):
         BaseException.__setattr__(self, name, value)
         return
 
-    raise FrozenInstanceError
+    raise FrozenInstanceError(name)
 
 
 def _frozen_delattrs(self, name):
@@ -583,7 +584,7 @@ def _frozen_delattrs(self, name):
         BaseException.__delattr__(self, name)
         return
 
-    raise FrozenInstanceError
+    raise FrozenInstanceError(name)
 
 
 def evolve(*args, **changes):
@@ -1652,7 +1653,7 @@ def _make_hash_script(
 
     type_hash = hash(_generate_unique_filename(cls, "hash"))
     # If eq is custom generated, we need to include the functions in globs
-    globs = {}
+    globs = {"NotInitializedError": NotInitializedError}
 
     hash_def = "def __hash__(self"
     hash_func = "hash(("
@@ -1675,6 +1676,15 @@ def _make_hash_script(
         a value which is then cached, depending on the value of cache_hash
         """
 
+        for a in attrs:
+            method_lines.append(
+                indent + f"if not hasattr(self, {a.name!r}):"
+            )
+            method_lines.append(
+                indent
+                + f"    raise NotInitializedError({a.name!r})"
+            )
+
         method_lines.extend(
             [
                 indent + prefix + hash_func,
@@ -1695,7 +1705,13 @@ def _make_hash_script(
         method_lines.append(indent + "    " + closing_braces)
 
     if cache_hash:
-        method_lines.append(tab + f"if self.{_HASH_CACHE_FIELD} is None:")
+        method_lines.append(
+            tab
+            + f"if not hasattr(self, {_HASH_CACHE_FIELD!r})"
+            " or self."
+            + _HASH_CACHE_FIELD
+            + " is None:"
+        )
         if frozen:
             append_hash_computation_lines(
                 f"object.__setattr__(self, '{_HASH_CACHE_FIELD}', ", tab * 2
@@ -1753,6 +1769,11 @@ def _make_eq_script(attrs: list) -> tuple[str, dict]:
 
     globs = {}
     if attrs:
+        for a in attrs:
+            lines.append(f"    if not hasattr(self, {a.name!r}):")
+            lines.append(f"        raise NotInitializedError({a.name!r})")
+            lines.append(f"    if not hasattr(other, {a.name!r}):")
+            lines.append(f"        raise NotInitializedError({a.name!r})")
         lines.append("    return  (")
         for a in attrs:
             if a.eq_key:
@@ -1772,6 +1793,7 @@ def _make_eq_script(attrs: list) -> tuple[str, dict]:
         lines.append("    return True")
 
     script = "\n".join(lines)
+    globs["NotInitializedError"] = NotInitializedError
 
     return script, globs
 

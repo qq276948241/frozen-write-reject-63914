@@ -269,7 +269,12 @@ class TestFunctional:
         ) as e:
             frozen.x = 2
 
-        assert e.value.msg == e.value.args[0] == "can't set attribute"
+        assert (
+            e.value.msg
+            == e.value.args[0]
+            == "can't set attribute 'x'"
+        )
+        assert e.value.name == "x"
         assert 1 == frozen.x
 
         with pytest.raises(
@@ -277,7 +282,12 @@ class TestFunctional:
         ) as e:
             del frozen.x
 
-        assert e.value.msg == e.value.args[0] == "can't set attribute"
+        assert (
+            e.value.msg
+            == e.value.args[0]
+            == "can't set attribute 'x'"
+        )
+        assert e.value.name == "x"
         assert 1 == frozen.x
 
     @pytest.mark.parametrize(

@@ -12,7 +12,7 @@ from typing import Callable, Literal, Protocol
 from . import exceptions, setters
 from ._cmp import cmp_using
 from ._config import get_run_validators, set_run_validators
-from ._funcs import asdict, assoc, astuple, has, resolve_types
+from ._funcs import asdict, assoc, astuple, diff, has, resolve_types
 from ._make import (
     NOTHING,
     Attribute,
@@ -59,6 +59,7 @@ __all__ = [
     "cmp_using",
     "converters",
     "define",
+    "diff",
     "evolve",
     "exceptions",
     "field",
